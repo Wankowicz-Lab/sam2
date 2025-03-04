@@ -59,10 +59,10 @@ python scripts/generate_ensemble.py -c config/atlas_model.yaml -i examples/input
 Note that this model is not conditioned on temperature, therefore any temperature input will be ignored.
 
 ### 2.1.3 - Automatic download of aSAM weights
-The first time you will use the `scripts/generate_ensemble.py` script, it will automatically download aSAM weights from a [GitHub release](https://todo.com). The files are pretty large (~ 1 GB for the ATLAS and mdCATH models each), so make sure to have enough storage space. By default, the files will be placed in the `$HOME/.sam2/weights` directory, which will be automatically created. If you want to change their download location, change the `SAM_WEIGHTS_PATH` environmental variable before running the script.
+The first time you will use the `scripts/generate_ensemble.py` script, it will automatically download aSAM weights from a [GitHub release](https://github.com/giacomo-janson/sam2/releases/tag/data-1.0). The files are pretty large (~ 1 GB for the ATLAS and mdCATH models each), so make sure to have enough storage space. By default, the files will be placed in the `$HOME/.sam2/weights` directory, which will be automatically created. If you want to change their download location, change the `SAM_WEIGHTS_PATH` environmental variable before running the script.
 
 ## 2.2 - Notes on aSAM input
-📝 **Input PDB structure**: The only required input of this aSAM version is a PDB file. You can provide only PDB files with the following characteristics:
+📝 **Input PDB structure**: The only required input of this aSAM version is a PDB file. You can only provide PDB files with the following characteristics:
 * Single chain PDB file.
 * Single model PDB file (e.g.: no multi-model NMR input).
 * No missing heavy atoms (e.g.: no missing residues, chain breaks).
@@ -74,7 +74,7 @@ The first time you will use the `scripts/generate_ensemble.py` script, it will a
 ## 3.1 - Machine learning dataset splits
 The training/validation/test splits that we used for the ATLAS and mdCATH datasets are available in `data/splits`.
 ## 3.2 - Input PDB files for systems analyzed in the aSAM article
-The input PDB files for all the systems analyzed in the aSAM article are available at: `data/input`.
+Links for the input PDB files of all systems analyzed in the aSAM article are available at: `data/input/README.md`.
 
 # 4 - Integrated open-source code
 The decoder of aSAM relies on the Structure Module of [AlphaFold2](https://pubmed.ncbi.nlm.nih.gov/34265844/). We used the [OpenFold](https://github.com/aqlaboratory/openfold) implementation of this module with minor modifications. OpenFold is licensed under the Apache License 2.0. The `sam/openfold` directory is a direct copy from the OpenFold repository, with some small edits.

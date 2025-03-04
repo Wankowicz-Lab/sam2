@@ -152,5 +152,5 @@ minimization:
 platform:
   device: cuda
 weights:
-  path: null
+  path: /mnt/home/jansongi/.sam2/weights/mdcath_1.0
   version: mdcath_1.0

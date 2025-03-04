@@ -35,7 +35,7 @@ def to_json_compatible(report):
     return _report
 
 
-github_releases_url = "https://github.com/giacomo-janson/sam2/releases/download/weights-pre-1.0"
+github_releases_url = "https://github.com/giacomo-janson/sam2/releases/download/data-1.0"
 
 def check_sam_weights(cfg_path: str, verbose: bool = True):
     model_cfg = read_cfg_file(cfg_path)
