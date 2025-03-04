@@ -10,22 +10,23 @@ This repository mainly implements panel **c** in the figure below, the inference
 # 1 - Installation
 
 ## 1.1 - Local system
-We recommend installing this package in a new [Conda environment](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html) that you create from the `sam2.yml` file in this repository. If you follow this strategy, use these commands:
+We provide a Linux-only package for running aSAM. Here is how to install it:
 
 1. Clone the repository:
    ```bash
    git clone https://github.com/giacomo-janson/sam2.git
    ```
-   and go into the root directory of the repository.
-2. Install the dedicated conda environment and dependencies:
+   and navigate to the root directory of the repository.
+
+2. We recommend installing the aSAM package in a dedicated Python environment, for example a [Conda environment](https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html) or a [Python virtual environment](https://docs.python.org/3/library/venv.html). If you use Conda:
    ```bash
-   conda env create -f sam2.yml
-   ```
-3. Activate the environment:
-   ```bash
+   # Create the environment.
+   conda create --name sam2 python=3.10
+   # Activate the environment.
    conda activate sam2
    ```
-4. Install the `sam` Python library in editable mode (it will just put the library in [$PYTHONPATH](https://docs.python.org/3/using/cmdline.html#envvar-PYTHONPATH)):
+3. Optional (but recommended): if you want to use a GPU to speed up aSAM sampling, you may need to manually install PyTorch with CUDA. We have tested aSAM with PyTorch versions 1.13.1 to 2.6.0, higher versions should also work well. Make sure to choose a PyTorch version associated to a CUDA version compatible with your system. Check the PyTorch website [here](https://pytorch.org/get-started/locally/) and [here](https://pytorch.org/get-started/previous-versions/) for installation instructions. Note: if you skip this step, a PyTorch version will be installed automatically in the next step, but it may not include CUDA support depending on your system.
+4. Install the `sam` Python library and its dependencies:
    ```bash
    pip install -e .
    ```
@@ -35,7 +36,7 @@ We recommend installing this package in a new [Conda environment](https://docs.c
 ## 2.1 - Running locally
 
 ### 2.1.1 - mdCATH-based aSAMt
-You can generate a structural ensemble of a custom peptide sequence via the  `scripts/generate_ensemble.py` inference script. To run the mdCATH-based aSAMt model, the usage is:
+You can generate a structural ensemble of a protein via the `scripts/generate_ensemble.py` inference script. To run the mdCATH-based aSAMt model, the usage is:
 ```bash
 python scripts/generate_ensemble.py -c config/mdcath_model.yaml -i examples/input/4qbuA03.320.pdb -o protein -n 250 -b 8 -T 320 -d cuda
 ```
@@ -75,12 +76,14 @@ The first time you will use the `scripts/generate_ensemble.py` script, it will a
 The training/validation/test splits that we used for the ATLAS and mdCATH datasets are available in `data/splits`.
 ## 3.2 - Input PDB files for systems analyzed in the aSAM article
 Links for the input PDB files of all systems analyzed in the aSAM article are available at: `data/input/README.md`.
+## 3.3 - Ensemble analysis and comparison scores
+This repository also contains the code for the scores used in the aSAM article to analyze and compare ensembles. See the `script/ensemble_analysis.py` and `script/ensemble_comparison.py` scripts for more information.
 
 # 4 - Integrated open-source code
 The decoder of aSAM relies on the Structure Module of [AlphaFold2](https://pubmed.ncbi.nlm.nih.gov/34265844/). We used the [OpenFold](https://github.com/aqlaboratory/openfold) implementation of this module with minor modifications. OpenFold is licensed under the Apache License 2.0. The `sam/openfold` directory is a direct copy from the OpenFold repository, with some small edits.
 
 # 5 - Notes
-## 5.1 - Legacy: idpSAM model for intrinsically disordered peptides
+## 5.1 - Legacy: idpSAM for intrinsically disordered peptides
 If you are looking for idpSAM, a predecessor of aSAM trained on C alpha atoms of implicit solvent simulations of intrinsically disordered peptides, please refer to the [idpSAM](https://github.com/giacomo-janson/idpsam) repository.
 
 # 6 - Updates

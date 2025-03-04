@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sam2"
+version = "1.0.0"
+dependencies = [
+    "biopython==1.85",
+    "diffusers==0.32.2",
+    "dm-tree",
+    "mdtraj==1.10.3",
+    "torch>=1.13.1"
+]
