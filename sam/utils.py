@@ -57,7 +57,6 @@ def download_sam_weights(version: str, verbose: bool = True):
     url = github_releases_url + "/" + filename
 
     if os.getenv("SAM_WEIGHTS_PATH") is None:
-        # Use a 'weights' directory.
         download_path = os.path.expanduser("~/.sam2/weights")
     else:
         download_path = os.getenv("SAM_WEIGHTS_PATH")

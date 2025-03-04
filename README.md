@@ -72,9 +72,9 @@ The first time you will use the `scripts/generate_ensemble.py` script, it will a
 
 # 3 - Other content
 ## 3.1 - Machine learning dataset splits
-The training/validation/test splits that we used for the ATLAS and mdCATH datasets are available in `data/datasets/splits`.
+The training/validation/test splits that we used for the ATLAS and mdCATH datasets are available in `data/splits`.
 ## 3.2 - Input PDB files for systems analyzed in the aSAM article
-The input PDB files for all the systems analyzed in the aSAM article are available at: `data/datasets/splits`.
+The input PDB files for all the systems analyzed in the aSAM article are available at: `data/input`.
 
 # 4 - Integrated open-source code
 The decoder of aSAM relies on the Structure Module of [AlphaFold2](https://pubmed.ncbi.nlm.nih.gov/34265844/). We used the [OpenFold](https://github.com/aqlaboratory/openfold) implementation of this module with minor modifications. OpenFold is licensed under the Apache License 2.0. The `sam/openfold` directory is a direct copy from the OpenFold repository, with some small edits.
