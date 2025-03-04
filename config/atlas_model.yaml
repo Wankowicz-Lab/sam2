@@ -4,13 +4,6 @@ data:
     mode: single
     perturb: null
     type: xyz
-
-weights:
-  path: /mnt/ffs24/home/jansongi/projects/sam/git.2025/sam/weights/atlas
-
-minimization:
-  protocol: atlas
-
 decoder:
   accessory_activation: relu
   activation: relu
@@ -42,7 +35,6 @@ decoder:
   sm_swiglu_transition: false
   sm_swiglu_transition_hr: 2
   sm_trans_scale_factor: 10
-
 encoder:
   accessory_activation: silu
   activation: silu
@@ -87,7 +79,6 @@ encoder:
   out_ln: false
   out_mode: simple
   pos_embed_r: 32
-
 generative_model:
   loss: l2
   sched_params:
@@ -99,19 +90,16 @@ generative_model:
     prediction_type: epsilon
     variance_type: fixed_small
   type: diffusers_dm
-
 generative_stack:
   bead_type: ca
   data_type: aa_protein
   encoding_dim: 32
   use_enc_scaler: true
-
 generator:
   activation: silu
   arch: eps_v02
   attention_mode: adanorm
   bead_embed_dim: 32
-  comment: basic modified version of IdpSAM
   conditioned_transition: false
   edge_dim: 128
   edge_embed_mode: idpsam
@@ -163,5 +151,10 @@ generator:
   token_dim: 1024
   token_residual: false
   token_update_addition: false
+minimization:
+  protocol: atlas
 platform:
   device: cuda
+weights:
+  path: null
+  version: atlas_1.0

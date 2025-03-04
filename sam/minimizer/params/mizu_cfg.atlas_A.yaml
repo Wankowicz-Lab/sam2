@@ -1,14 +1,14 @@
 opt:
   energy_params:
-    angle_const: 1  ### 1000
-    bond_const: 0.1  ### 10000
+    angle_const: 1
+    bond_const: 0.1
     cabl_const: 100000
     chi_const: 1000
-    improper_dihedral_const: 1  ### 10
+    improper_dihedral_const: 1
     nb_const: 100
     nb_form: l2
     phi_psi_const: 50
-    proper_dihedral_const: 1  ### 10
+    proper_dihedral_const: 1
   history_size: 100
   max_iter: 10
   nb_centers_threshold: 1.0

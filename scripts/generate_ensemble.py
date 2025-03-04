@@ -1,9 +1,9 @@
 """
 Generate with SAM conformational ensemble for an input PDB file.
-
-Usage:
-    python TODO
-
+Notes:
+    On the first time you use this script, weights for the aSAM models will be
+    automatically downloaded to ~/.sam2/weights. Change the $SAM_WEIGHTS_PATH
+    environmemtal variable to change the download path.
 """
 
 import os
@@ -13,7 +13,7 @@ import time
 import numpy as np
 import mdtraj
 from sam.model import AllAtomSAM
-from sam.utils import read_cfg_file, print_msg
+from sam.utils import read_cfg_file, print_msg, check_sam_weights
 from sam.data.topology import get_seq_from_top
 from sam.minimizer.runner import Minimizer
 
@@ -41,7 +41,7 @@ if __name__ == "__main__":
         help='Batch size for sampling. (default: 8)')
     parser.add_argument('-d', '--device', type=str, default='cuda',
         choices=['cuda', 'cpu'], help='PyTorch device. (default: cuda)')
-    parser.add_argument('--temperature', type=float,
+    parser.add_argument('-T', '--temperature', type=float,
         help='temperature (optional, only for temperature-based models)')
     parser.add_argument('-q', '--quiet', action='store_true',
         help='Quiet mode, will not print any output.')
@@ -66,6 +66,7 @@ if __name__ == "__main__":
     if not os.path.isfile(args.init):
         raise FileNotFoundError(args.init)
 
+    check_sam_weights(args.config_fp)
     model_cfg = read_cfg_file(args.config_fp)
     # check_env(model_cfg)
 

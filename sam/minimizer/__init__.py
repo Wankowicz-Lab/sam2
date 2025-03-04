@@ -854,7 +854,7 @@ def minimize(
             optimizer.step(closure)
         except MinimizerEarlyStopping as e:
             early_stopped = True
-            print_msg("Early stopping", verbose=verbose>0, tag=msg_tag)
+            print_msg("- Early stopping", verbose=verbose>0, tag=msg_tag)
             break
         print_msg(f"It took {time.time()-t0}", verbose=verbose>1, tag=msg_tag)
 

@@ -29,10 +29,7 @@ staticdata_xyz_keys = ["x", "a", "a_e", "r", "x_t"]
 _StaticData = namedtuple("StaticData",
                          staticdata_xyz_keys,
                          defaults=[0, 0, 0, 0, 0])
-# staticdata_enc_keys = ["z", "a", "a_e", "r", "z_t"]
-# _StaticDataEnc = namedtuple("StaticDataEnc",
-#                             staticdata_enc_keys,
-#                             defaults=[0, 0, 0, 0, 0])
+
 staticdata_enc_keys = ["z", "a", "a_e", "r", "z_t", "z_top", "temperature"]
 _StaticDataEnc = namedtuple("StaticDataEnc",
                             staticdata_enc_keys,
@@ -1692,7 +1689,9 @@ class EncodedProteinDataset(torch.utils.data.dataset.Dataset,
         if self.attributes:
             prot = self.protein_list[prot_idx]
             if "temperature" in self.attributes:
-                args.update({"temperature": prot.attributes["temperature"]})
+                args.update({
+                    "temperature": torch.tensor(prot.attributes["temperature"])  # prot.attributes["temperature"]
+                })
         return args
 
 
