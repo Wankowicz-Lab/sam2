@@ -18,12 +18,12 @@ Input files for the 12 fast-folding proteins analyzed in the aSAM article (Fig. 
 Link: [input_fast_folding.zip](https://github.com/giacomo-janson/sam2/releases/download/data-1.0/input_fast_folding.zip)
 
 ## Monomeric proteins with experimentally-determined melting tmeperature
-Input files for the 62 monomeric proteins analyzed in the aSAM article (Fig. 7a).
+Input files for the 62 monomeric proteins (from [Pucci et al., 2017](https://pubmed.ncbi.nlm.nih.gov/29036273/)) analyzed in the aSAM article (Fig. 7a).
 
 Link: [input_experimental_tm.zip](https://github.com/giacomo-janson/sam2/releases/download/data-1.0/input_experimental_tm.zip)
 
 ## Homologous pairs of meso- and thermophilic proteins
-Input files for the 5 pairs of proteins analyzed in the aSAM article (Fig. 7b)
+Input files for the 5 pairs of proteins (from [Razvi and Scholtz 2006](https://pubmed.ncbi.nlm.nih.gov/16815912/)) analyzed in the aSAM article (Fig. 7b)
 
 Link: [input_meso_thermo_pairs.zip](https://github.com/giacomo-janson/sam2/releases/download/data-1.0/input_meso_thermo_pairs.zip)
 
