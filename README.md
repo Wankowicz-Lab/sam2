@@ -43,7 +43,7 @@ python scripts/generate_ensemble.py -c config/mdcath_model.yaml -i examples/inpu
 Here is a description of the arguments:
 * `-c`: configuration file for aSAMt. Use the default ones provided in the `config` directory of the repository.
 * `-i`: initial PDB file. This represent the initial
-* `-o`: output path. In this example, the command will save a series of output files named `protein.*`. These are a DCD trajectory file storing the conformations you generated and a PDB file that you can use as topologies for parsing the DCD file.
+* `-o`: output path. In this example, the command will save a series of output files named `protein.*`. These are a DCD trajectory file storing the conformations you generated and a PDB file that you can use as topology for parsing the DCD file (this conformation is simply the first snapshot of the trajectory file).
 * `-n`: number of conformations to generate.
 * `-b`: batch size used sampling.
 * `-T`: simulation temperature (in units of Kelvin) at which to generate an ensemble.
@@ -52,7 +52,7 @@ Here is a description of the arguments:
 There are also other options that you can tweak. Use the `--help` flag to get the full list.
 
 ### 2.1.2 - ATLAS-based aSAMc
-In case you want to use the ATLAS-based aSAM model, the command is:
+In case you want to use the ATLAS-based aSAMc model, the command is:
 ```bash
 python scripts/generate_ensemble.py -c config/atlas_model.yaml -i examples/input/6h49_A.pdb -o protein -n 250 -b 8 -d cuda
 ```
