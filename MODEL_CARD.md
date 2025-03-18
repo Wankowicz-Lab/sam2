@@ -1,6 +1,19 @@
 ---
 # Doc / guide: https://huggingface.co/docs/hub/model-cards
-{{ card_data }}
+license: Apache 2.0
+license_link: https://www.apache.org/licenses/LICENSE-2.0
+doi: https://doi.org/10.1101/2025.03.09.642148
+language:
+- en
+tags:
+- proteins
+- structural ensembles
+- molecular dynamics
+- thermostability
+- generative modeling
+- autoencoder
+- diffusion model
+- transformers
 ---
 
 # Model Card for aSAM
