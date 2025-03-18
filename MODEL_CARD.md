@@ -31,7 +31,7 @@ aSAM (atomistic Structural Autoencoder Model) is a latent diffusion-based genera
 <!-- Provide a longer summary of what this model is. -->
 
 - **Developed by:** Giacomo Janson, Alexander Jussupow, Michael Feig
-- **Funded by:** National Institutes of Health
+- **Funded by:** National Institutes of Health, grant R35 GM126948 (to MF)
 - **Shared by:** Feig Lab ([Department of Biochemistry and Molecular Biology](https://bmb.natsci.msu.edu) at [Michigan State University](https://msu.edu))
 - **Model type:** deep generative model
 - **License:** Apache 2.0
