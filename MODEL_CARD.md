@@ -192,7 +192,7 @@ We evaluated model on the following tasks:
 Carbon emissions estimated using the [Machine Learning Impact calculator](https://mlco2.github.io/impact#compute) presented in [Lacoste et al. (2019)](https://arxiv.org/abs/1910.09700).
 
 - **Hardware Type:** RTX 2080 Ti
-- **Hours used:** 440 (for training the final autoencoders and diffusion models of aSAMt)
+- **Hours used:** 2784 (for training the final autoencoder and diffusion model of aSAMt)
 - **Cloud Provider:** academic infrastructure
 - **Compute Region:** US
 - **Carbon Emitted:** 300.67 kg CO2 eq.
