@@ -227,6 +227,12 @@ class SAM:
             sample_args=sample_args,
             use_cache=use_cache
         )
+        """
+        TO DO:
+         Here is where we would need to add SFcalculator
+        I am not sure how entirely to do this but it will be on gen_out["enc"]
+        """
+        
         print("gen_out", gen_out["enc"].shape)
         # Decode to xyz coordinates.
         dec_out = self.decode(
