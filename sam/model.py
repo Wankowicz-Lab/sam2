@@ -227,7 +227,7 @@ class SAM:
             sample_args=sample_args,
             use_cache=use_cache
         )
-
+        print("gen_out", gen_out["enc"].shape)
         # Decode to xyz coordinates.
         dec_out = self.decode(
             enc=gen_out["enc"],
@@ -312,7 +312,13 @@ class SAM:
                         batch = batch.to(self.device)
                         with torch.no_grad():
                             tem_enc = self.encoder.nn_forward(batch)
-
+                            """
+                            Encodes the template structure using the encoder's forward pass and processes
+                            the encodings for further use. If template encodings are provided in `tbm_data`,
+                            they are used directly. Otherwise, the template is encoded from scratch. The
+                            encodings are standardized if a scaler is provided, and moved to the CPU for
+                            further processing.
+                            """
                 # Use some existing encodings.
                 else:
                     tem_enc = tbm_data["enc"]
@@ -699,6 +705,7 @@ class AllAtomSAM(SAM):
                 #     xyz_gen_i = xyz_gen_i[:n_gen_i]
                 for k in sm_i.keys():
                     sm_i[k] = sm_i[k].cpu()
+                print(sm_i["positions"].shape)
                 sm_i["positions"] = sm_i["positions"][-1]
                 xyz_gen.append(sm_i)
                 tot_graphs += n_gen_i
