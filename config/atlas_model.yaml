@@ -156,5 +156,5 @@ minimization:
 platform:
   device: cuda
 weights:
-  path: null
+  path: /home/castelt/.sam2/weights/atlas_1.0
   version: atlas_1.0

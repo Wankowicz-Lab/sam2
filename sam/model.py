@@ -244,7 +244,7 @@ class SAM:
             enc_traj=None if not sample_args.get("get_traj") \
                      else gen_out["enc_traj"]
         )
-
+        print("Decode out shape is:", dec_out["xyz"].xyz.shape)    
         # Return the output.
         out = {"seq": seq,
                "name": prot_name,
