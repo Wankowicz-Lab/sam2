@@ -247,11 +247,13 @@ class SAM:
                      else gen_out["enc_traj"]
         )
         print("Decode out shape is:", dec_out["xyz"].xyz.shape)
-
-        device = "cuda:0" if torch.cuda.is_available() else "cpu"
-        pdb_file = '/dors/wankowicz_lab/vratins/pdb_redo_data/5yde/5yde_final.pdb'
-        mtz_file = '/dors/wankowicz_lab/vratins/pdb_redo_data/5yde/5yde_final.mtz'
-        exp_loss = exp_nll(dec_out["xyz"].xyz[0], pdb_file, mtz_file, device)
+        #print()
+        #device = "cuda:0" if torch.cuda.is_available() else "cpu"
+        #pdb_file = '/home/srivasv/test.pdb'
+        #mtz_file = '/dors/wankowicz_lab/vratins/pdb_redo_data/5yde/5yde_final.mtz'
+        #exp_loss, reflection, r_free = exp_nll(dec_out["xyz"].xyz[0], pdb_file, mtz_file, device)
+        #print(f"\nexp_loss is {exp_loss}\n")
+        #print("rfree:", r_free)
         # Return the output.
         out = {"seq": seq,
                "name": prot_name,

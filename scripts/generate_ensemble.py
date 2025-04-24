@@ -8,6 +8,7 @@ Notes:
 
 import os
 import sys
+sys.path.insert(0, '/dors/wankowicz_lab/castelt/guided_sampling/sam2/')
 import argparse
 import time
 import numpy as np

@@ -134,4 +134,4 @@ def exp_nll(pred_coords, pdb_path, mtz_path, device):
     nll = NLLloss(dcp)
     loss = nll(pred_coords.reshape(1, -1, 3))
     
-    return loss, reflections
+    return loss, reflections, dcp.r_free
