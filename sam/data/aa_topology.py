@@ -322,7 +322,8 @@ def get_traj_list(
         a: torch.Tensor = None,
         verbose: bool = False,
         join: bool = False,
-        batch_y: torch.Tensor = None
+        batch_y: torch.Tensor = None,
+        guided: bool = False
     ):
 
     _a = _get_a(structure, a).cpu()
@@ -330,6 +331,8 @@ def get_traj_list(
     mask = restype_atom14_mask[_a]
 
     traj_l = []
+    current_latent = torch.zeros(structure["positions"].shape)
+    
     for i in range(structure["positions"].shape[0]):
         
         one_letter_seq_i = [restypes[j] for j in _a[i]]
@@ -338,23 +341,23 @@ def get_traj_list(
         bool_mask_i = mask[i].astype(bool)
         bool_mask_i = torch.Tensor(bool_mask_i) == 1.0
         # bool_mask_i = mask[i].astype(bool)[...,None]
-
+        xyz_traj_i = xyz_atom14_i[bool_mask_i]
+        xyz_traj_i = xyz_traj_i.detach().clone()
+        xyz_traj_i.requires_grad = True
+    
+        #xyz_traj_i.requires_grad = True
+        if guided:
         # Use the boolean mask to filter data
         # We need to expand the dimensions of bool_mask to match data's dimensions for broadcasting
-        xyz_traj_i = xyz_atom14_i[bool_mask_i]
         #print("xyz_traj_i grad is", xyz_traj_i.grad)
         #print("xyz_traj_i shape is ",xyz_traj_i.shape)
-        device = "cuda:0" if torch.cuda.is_available() else "cpu"
-        pdb_file = '/dors/wankowicz_lab/castelt/guided_sampling/PDBs/7lfo_clean.pdb'
-        mtz_file = '/dors/wankowicz_lab/castelt/guided_sampling/PDBs/7lfo-sf.cif'
-        exp_loss, reflection, r_free = exp_nll(xyz_traj_i, pdb_file, mtz_file, device)
-        exp_loss.backward(retain_graph=True)
-        print(f"batch_y grad {batch_y.grad.shape}")
-        
-        #print(f"\nexp_loss is {exp_loss}\n")
-        #print(f"exp_loss.backwards() is {exp_loss.grad}")
-        
-        #print(xyz_traj_i.shape)
+            device = "cuda:0" if torch.cuda.is_available() else "cpu"
+            pdb_file = '/dors/wankowicz_lab/castelt/guided_sampling/PDBs/7lfo_clean.pdb'
+            mtz_file = '/dors/wankowicz_lab/castelt/guided_sampling/PDBs/7lfo-sf.cif'
+            exp_loss, reflection, r_free = exp_nll(xyz_traj_i, pdb_file, mtz_file, device)
+            exp_loss.backward(retain_graph=True)
+            xyz_traj_i = xyz_traj_i - xyz_traj_i.grad * .01
+    
         # Now filtered_data will have shape (x, 3) where x is the number of True in bool_mask
 
         topology_i = get_atom14_topology(one_letter_seq_i, verbose=verbose)

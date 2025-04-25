@@ -537,8 +537,8 @@ class AllAtomSAM(SAM):
                 time_gen_i = time.time()
                 
                 # Forward pass
+                # first pass before guided sampling
                 sm_i = self.decoder.nn_forward(batch_y, batch)
-                print(f"sm_i positions grad_fn: {sm_i['positions'].grad_fn}")
                 
                 time_gen += time.time() - time_gen_i
                 
@@ -556,9 +556,7 @@ class AllAtomSAM(SAM):
         traj_gen = []
         for sm_i in xyz_gen:
             # We are looking here
-            print(f"batch_y in model.py is {batch_y.shape}")
-            traj_i = get_traj_list(sm_i, batch_y=batch_y)
-            print(traj_i)
+            traj_i = get_traj_list(sm_i, batch_y = batch_y, guided = False)
             traj_gen.extend(traj_i)
         traj_gen = mdtraj.join(traj_gen)
         traj_gen = traj_gen[:n_samples]
