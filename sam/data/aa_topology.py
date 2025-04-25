@@ -321,7 +321,8 @@ def get_traj_list(
         structure: dict,
         a: torch.Tensor = None,
         verbose: bool = False,
-        join: bool = False
+        join: bool = False,
+        batch_y: torch.Tensor = None
     ):
 
     _a = _get_a(structure, a).cpu()
@@ -341,13 +342,17 @@ def get_traj_list(
         # Use the boolean mask to filter data
         # We need to expand the dimensions of bool_mask to match data's dimensions for broadcasting
         xyz_traj_i = xyz_atom14_i[bool_mask_i]
-        print("xyz_traj_i shape is ",xyz_traj_i.shape)
+        #print("xyz_traj_i grad is", xyz_traj_i.grad)
+        #print("xyz_traj_i shape is ",xyz_traj_i.shape)
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
         pdb_file = '/dors/wankowicz_lab/castelt/guided_sampling/PDBs/7lfo_clean.pdb'
         mtz_file = '/dors/wankowicz_lab/castelt/guided_sampling/PDBs/7lfo-sf.cif'
         exp_loss, reflection, r_free = exp_nll(xyz_traj_i, pdb_file, mtz_file, device)
-        print(f"\nexp_loss is {exp_loss}\n")
-        print(f"exp_loss.backwards() is {exp_loss.backward()}")
+        exp_loss.backward(retain_graph=True)
+        print(f"batch_y grad {batch_y.grad.shape}")
+        
+        #print(f"\nexp_loss is {exp_loss}\n")
+        #print(f"exp_loss.backwards() is {exp_loss.grad}")
         
         #print(xyz_traj_i.shape)
         # Now filtered_data will have shape (x, 3) where x is the number of True in bool_mask

@@ -169,7 +169,7 @@ class SAM:
     #             return self._get_path(self.model_cfg["data"]["base_dp"], path)
     #         else:
     #             return path
-    
+    #     
     # def _get_path(self, parent, child):
     #     p = pathlib.Path(parent)
     #     c = pathlib.Path(child)
@@ -531,43 +531,18 @@ class AllAtomSAM(SAM):
                 e_gen_i = enc[tot_graphs:tot_graphs+batch.num_graphs]
                 n_gen_i = e_gen_i.shape[0]
                 batch_y[:e_gen_i.shape[0]] = e_gen_i
-                with torch.no_grad():
-                    time_gen_i = time.time()
-                    sm_i = self.decoder.nn_forward(batch_y, batch)
-                    #print(f"keys of sm_i = {sm_i.keys()}")
-                    #print(f"type of sm_i postitions{type(sm_i["positions"])}")
-                    #print(f"shape of sm_i is {sm_i["positions"].shape}")
-                    time_gen += time.time() - time_gen_i
-                # EXTERNAL_POTENTIAL #######################################
-                if enc_traj is not None:
-                    xyz_gen_traj_i = []
-                    xyz_traj_cls_i = []
-                    for t in range(enc_traj.shape[0]):
-                        with torch.no_grad():
-                            enc_gen_it = enc_traj[t][tot_graphs:tot_graphs+batch.num_graphs]
-                            xyz_gen_traj_t = self.decoder.nn_forward(
-                                enc_gen_it, batch
-                            )
-                        xyz_gen_traj_t["positions"] = xyz_gen_traj_t["positions"][-1]
-                        xyz_gen_traj_i.append(xyz_gen_traj_t)
-                        xyz_traj_cls_i.extend(
-                            [m for m in range(0+tot_graphs, batch.num_graphs+tot_graphs)]
-                        )
-                    xyz_traj.extend(xyz_gen_traj_i)
-                    xyz_traj_cls.extend(xyz_traj_cls_i)
-                ############################################################
-                # if pad_gen_batch:
-                #     xyz_gen_i = xyz_gen_i[:n_gen_i]
-                #come back to here
-                print("smi_positions shape is ",sm_i["positions"][-1].shape)
-                device = "cuda:0" if torch.cuda.is_available() else "cpu"
-                pdb_file = '/dors/wankowicz_lab/castelt/guided_sampling/PDBs/7lfo_clean.pdb'
-                mtz_file = '/dors/wankowicz_lab/castelt/guided_sampling/PDBs/7lfo-sf.cif'
-                #exp_loss, reflection, r_free = exp_nll(sm_i["positions"][-1], pdb_file, mtz_file, device)
-                #print(f"\nexp_loss is {exp_loss}\n")
-                #for k in sm_i.keys():
-                #    sm_i[k] = sm_i[k].cpu()
-                #print(sm_i["positions"].shape)
+                batch_y.requires_grad = True
+                print(f"e_gen_i is {e_gen_i.shape}")
+                print(f"\nbatch_y is {batch_y.shape}\n")
+                time_gen_i = time.time()
+                
+                # Forward pass
+                sm_i = self.decoder.nn_forward(batch_y, batch)
+                print(f"sm_i positions grad_fn: {sm_i['positions'].grad_fn}")
+                
+                time_gen += time.time() - time_gen_i
+                
+                # Store positions for trajectory
                 sm_i["positions"] = sm_i["positions"][-1]
                 xyz_gen.append(sm_i)
                 tot_graphs += n_gen_i
@@ -581,12 +556,13 @@ class AllAtomSAM(SAM):
         traj_gen = []
         for sm_i in xyz_gen:
             # We are looking here
-            traj_i = get_traj_list(sm_i)
+            print(f"batch_y in model.py is {batch_y.shape}")
+            traj_i = get_traj_list(sm_i, batch_y=batch_y)
             print(traj_i)
             traj_gen.extend(traj_i)
         traj_gen = mdtraj.join(traj_gen)
         traj_gen = traj_gen[:n_samples]
-        print(f"traj_gen shape is {traj_gen}")
+        #print(f"traj_gen shape is {traj_gen}")
         results = {"xyz": traj_gen, "time": time_gen}
         # EXTERNAL_POTENTIAL ###################################################
         if xyz_traj:
