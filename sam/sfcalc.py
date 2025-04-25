@@ -105,9 +105,11 @@ class NLLloss:
         return NLLreg
 
 def exp_nll(pred_coords, pdb_path, mtz_path, device):
-
     pdb_file = os.path.join(pdb_path) 
     mtz_file = os.path.join(mtz_path) 
+
+    # Ensure pred_coords is on the correct device
+    pred_coords_torch = pred_coords.to(device)
     
     structure = gemmi.read_pdb(pdb_file)
     structure.remove_waters()
@@ -120,8 +122,8 @@ def exp_nll(pred_coords, pdb_path, mtz_path, device):
         set_experiment=True, 
         freeflag='FREE', 
         testset_value=0,
-        device = device
-        )
+        device=device
+    )
 
     dcp.inspect_data()
     dcp.calc_fprotein()
@@ -129,9 +131,9 @@ def exp_nll(pred_coords, pdb_path, mtz_path, device):
     dcp.get_scales_adam()
 
     reflections = torch.tensor(dcp.HKL_array.shape[0], device=device)
-    dcp.atom_pos_orth = pred_coords
+    dcp.atom_pos_orth = pred_coords_torch
     
     nll = NLLloss(dcp)
-    loss = nll(pred_coords.reshape(1, -1, 3))
+    loss = nll(pred_coords_torch.reshape(1, -1, 3))
     
     return loss, reflections, dcp.r_free

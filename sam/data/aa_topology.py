@@ -18,6 +18,7 @@ from sam.openfold.np import residue_constants
 from sam.openfold.data import data_transforms
 
 from sam.data.sequences import aa_one_to_three_dict, aa_list, aa_three_letters
+from sam.sfcalc import exp_nll
 
 
 #
@@ -186,7 +187,7 @@ def get_frames_from_po(po: dict):
     ## po = data_transforms.atom37_to_frames(po)
     ## po = data_transforms.make_atom14_masks(po)
     ## po = data_transforms.get_backbone_frames(po)
-
+    
     data_transforms.make_seq_mask(po)
     data_transforms.make_atom14_masks(po)  ##
     data_transforms.make_atom14_positions(po)  ## 
@@ -195,7 +196,6 @@ def get_frames_from_po(po: dict):
     data_transforms._make_pseudo_beta(po, "")  ##
     data_transforms.get_backbone_frames(po)
     data_transforms.get_chi_angles(po)  ##
-
     return po
 
 
@@ -245,6 +245,7 @@ def _get_a(structure: dict, a: torch.Tensor = None):
     return _a
 
 # Amino acid pair indices, used for building statistical potentials.
+
 ap_mapping = np.zeros((20, 20))
 ap_count = 0
 for i, r_i in enumerate(restypes):
@@ -329,7 +330,7 @@ def get_traj_list(
 
     traj_l = []
     for i in range(structure["positions"].shape[0]):
-    
+        
         one_letter_seq_i = [restypes[j] for j in _a[i]]
 
         xyz_atom14_i = structure["positions"][i]
@@ -340,10 +341,18 @@ def get_traj_list(
         # Use the boolean mask to filter data
         # We need to expand the dimensions of bool_mask to match data's dimensions for broadcasting
         xyz_traj_i = xyz_atom14_i[bool_mask_i]
+        print("xyz_traj_i shape is ",xyz_traj_i.shape)
+        device = "cuda:0" if torch.cuda.is_available() else "cpu"
+        pdb_file = '/dors/wankowicz_lab/castelt/guided_sampling/PDBs/7lfo_clean.pdb'
+        mtz_file = '/dors/wankowicz_lab/castelt/guided_sampling/PDBs/7lfo-sf.cif'
+        exp_loss, reflection, r_free = exp_nll(xyz_traj_i, pdb_file, mtz_file, device)
+        print(f"\nexp_loss is {exp_loss}\n")
+        print(f"exp_loss.backwards() is {exp_loss.backward()}")
+        
+        #print(xyz_traj_i.shape)
         # Now filtered_data will have shape (x, 3) where x is the number of True in bool_mask
 
         topology_i = get_atom14_topology(one_letter_seq_i, verbose=verbose)
-
         traj_i = mdtraj.Trajectory(xyz=xyz_traj_i.detach().cpu().numpy()*0.1,
                                    topology=topology_i)
         if verbose:

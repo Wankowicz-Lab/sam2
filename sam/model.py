@@ -236,6 +236,7 @@ class SAM:
         """
         
         print("gen_out", gen_out["enc"].shape)
+        print(f"Type of gen_out is {type(gen_out["enc"])}")
         # Decode to xyz coordinates.
         dec_out = self.decode(
             enc=gen_out["enc"],
@@ -246,13 +247,6 @@ class SAM:
             enc_traj=None if not sample_args.get("get_traj") \
                      else gen_out["enc_traj"]
         )
-        print("Decode out shape is:", dec_out["xyz"].xyz.shape)
-        #print()
-        #device = "cuda:0" if torch.cuda.is_available() else "cpu"
-        #pdb_file = '/home/srivasv/test.pdb'
-        #mtz_file = '/dors/wankowicz_lab/vratins/pdb_redo_data/5yde/5yde_final.mtz'
-        #exp_loss, reflection, r_free = exp_nll(dec_out["xyz"].xyz[0], pdb_file, mtz_file, device)
-        #print(f"\nexp_loss is {exp_loss}\n")
         #print("rfree:", r_free)
         # Return the output.
         out = {"seq": seq,
@@ -465,163 +459,6 @@ class SAM:
         )
         return tem_dataset
 
-
-    def decode(self,
-        enc: torch.Tensor,
-        seq: str,
-        batch_size: int = 256,
-        prot_name: str = "protein",
-        enc_traj: torch.Tensor = None
-        ):
-        """
-        Decode generated encodings into xyz coordinates.
-        """
-
-        n_samples = enc.shape[0]
-
-        self._print(f"# Decoding {n_samples} samples.")
-        self._print("- Setting up a dataloader for xyz conformations.")
-
-        dec_out = {}  # Dictionary to store the output of this method.
-
-        # Dataset for decoding.
-        dataset = MinimalDataset(
-            name=prot_name,
-            seq=seq,
-            n_frames=n_samples,
-            verbose=False
-        )
-
-        # Dataloader for decoding.
-        dataloader = torch.utils.data.dataloader.DataLoader(
-            dataset=dataset, batch_size=batch_size)
-
-        # Actually decode the ensemble.
-        time_gen = 0
-        tot_graphs = 0
-        xyz_gen = []
-        xyz_traj = []
-        self._print("- Decoding.")
-        while tot_graphs < n_samples:
-            for batch in dataloader:
-                batch = batch.to(self.device)
-                batch_y = torch.zeros(batch.x.shape[0],
-                                      batch.x.shape[1],
-                                      enc.shape[-1],
-                                      device=self.device)
-                e_gen_i = enc[tot_graphs:tot_graphs+batch.num_graphs]
-                n_gen_i = e_gen_i.shape[0]
-                pad_gen_batch = n_gen_i <= batch.num_graphs
-                if pad_gen_batch:
-                    batch_y[:e_gen_i.shape[0]] = e_gen_i
-                else:
-                    raise NotImplementedError()
-                with torch.no_grad():
-                    time_gen_i = time.time()
-                    xyz_gen_i = self.decoder.nn_forward(batch_y, batch)
-                    # EXTERNAL_POTENTIAL #######################################
-                    if enc_traj is not None:
-                        # xyz_gen_traj_i = []
-                        # for t in range(enc_traj.shape[0]):
-                        #     xyz_gen_traj_t = self.decoder.nn_forward(
-                        #         enc_traj[t], batch
-                        #     )
-                        #     xyz_gen_traj_i.append(xyz_gen_traj_t.unsqueeze(0))
-                        # xyz_traj.append(torch.cat(xyz_gen_traj_i, axis=0))
-                        raise NotImplementedError()
-                    ############################################################
-                    time_gen += time.time() - time_gen_i
-                if pad_gen_batch:
-                    xyz_gen_i = xyz_gen_i[:n_gen_i]
-                xyz_gen.append(xyz_gen_i)
-                tot_graphs += xyz_gen_i.shape[0]
-                self._print("- Decoded {} graphs of {}.".format(
-                    tot_graphs, n_samples))
-                if tot_graphs >= n_samples:
-                    break
-        
-        self._print(f"- Done.")
-
-        # Prepare the output xyz coordinates.
-        xyz_gen = torch.cat(xyz_gen, axis=0)[:n_samples]
-
-        dec_out["xyz"] = xyz_gen
-        dec_out["time"] = time_gen
-        # EXTERNAL_POTENTIAL ###################################################
-        if xyz_traj:
-            # xyz_traj = torch.cat(xyz_traj, axis=1)
-            raise NotImplementedError()
-        ########################################################################
-        dec_out["xyz_traj"] = xyz_traj
-
-        return dec_out
-    
-
-    def save(self,
-        out: dict,
-        out_path: str,
-        out_fmt: str = "dcd"):
-
-        self._print("# Saving output.")
-        out_path = pathlib.Path(out_path)
-        
-        save_paths = {}
-
-        # Save a FASTA file with the input sequence.
-        fasta_path = out_path.parent / (out_path.name + ".seq.fasta")
-        save_paths["fasta"] = fasta_path
-        self._print(f"- Saving a FASTA sequence file to: {fasta_path}.")
-        with open(fasta_path, "w") as o_fh:
-            o_fh.write(f">{out['name']}\n{out['seq']}\n")
-
-        # Save encodings.
-        # enc_gen_path = out_path.parent / (out_path.name + ".enc.gen.npy")
-        # np.save(enc_gen_path, out["enc"])
-
-        # Save xyz coordinates.
-        if out_fmt == "numpy":
-            npy_path = out_path.parent / (out_path.name + ".ca.xyz.npy")
-            save_paths["ca_npy"] = npy_path
-            self._print(
-                f"- Saving a C-alpha positions npy file to: {npy_path}.")
-            np.save(npy_path, out["xyz"])
-            
-        elif out_fmt == "dcd":
-            import mdtraj
-            from sam.data.topology import get_ca_topology
-            # Get the mdtraj C-alpha topology.
-            topology = get_ca_topology(out["seq"])
-            # Build a mdtraj C-alpha Trajectory.
-            traj = mdtraj.Trajectory(xyz=out["xyz"], topology=topology)
-            traj_path = out_path.parent / (out_path.name + ".ca.traj.dcd")
-            # Save.
-            save_paths["ca_dcd"] = traj_path
-            pdb_path = out_path.parent / (out_path.name + ".ca.top.pdb")
-            save_paths["ca_pdb"] = pdb_path
-            self._print(
-                f"- Saving a C-alpha trajectory dcd file to: {traj_path}.")
-            self._print(
-                f"- Saving a C-alpha topology PDB file to: {pdb_path}.")
-            traj.save(str(traj_path))
-            traj[0].save(str(pdb_path))
-
-        else:
-            raise KeyError(out_fmt)
-        # EXTERNAL_POTENTIAL ###################################################
-        if "enc_traj" in out:
-            # np.save(
-            #     out_path.parent / (out_path.name + ".enc.diffusion.npy"),
-            #     out["enc_traj"],
-            # )
-            raise NotImplementedError()
-        if "xyz_traj" in out:
-            # np.save(
-            #     out_path.parent / (out_path.name + ".ca.xyz.diffusion.npy"),
-            #     out["xyz_traj"],
-            # )
-            raise NotImplementedError()
-        ########################################################################
-        return save_paths
     
 
 class AllAtomSAM(SAM):
@@ -697,6 +534,9 @@ class AllAtomSAM(SAM):
                 with torch.no_grad():
                     time_gen_i = time.time()
                     sm_i = self.decoder.nn_forward(batch_y, batch)
+                    #print(f"keys of sm_i = {sm_i.keys()}")
+                    #print(f"type of sm_i postitions{type(sm_i["positions"])}")
+                    #print(f"shape of sm_i is {sm_i["positions"].shape}")
                     time_gen += time.time() - time_gen_i
                 # EXTERNAL_POTENTIAL #######################################
                 if enc_traj is not None:
@@ -718,9 +558,16 @@ class AllAtomSAM(SAM):
                 ############################################################
                 # if pad_gen_batch:
                 #     xyz_gen_i = xyz_gen_i[:n_gen_i]
-                for k in sm_i.keys():
-                    sm_i[k] = sm_i[k].cpu()
-                print(sm_i["positions"].shape)
+                #come back to here
+                print("smi_positions shape is ",sm_i["positions"][-1].shape)
+                device = "cuda:0" if torch.cuda.is_available() else "cpu"
+                pdb_file = '/dors/wankowicz_lab/castelt/guided_sampling/PDBs/7lfo_clean.pdb'
+                mtz_file = '/dors/wankowicz_lab/castelt/guided_sampling/PDBs/7lfo-sf.cif'
+                #exp_loss, reflection, r_free = exp_nll(sm_i["positions"][-1], pdb_file, mtz_file, device)
+                #print(f"\nexp_loss is {exp_loss}\n")
+                #for k in sm_i.keys():
+                #    sm_i[k] = sm_i[k].cpu()
+                #print(sm_i["positions"].shape)
                 sm_i["positions"] = sm_i["positions"][-1]
                 xyz_gen.append(sm_i)
                 tot_graphs += n_gen_i
@@ -733,11 +580,13 @@ class AllAtomSAM(SAM):
 
         traj_gen = []
         for sm_i in xyz_gen:
+            # We are looking here
             traj_i = get_traj_list(sm_i)
+            print(traj_i)
             traj_gen.extend(traj_i)
         traj_gen = mdtraj.join(traj_gen)
         traj_gen = traj_gen[:n_samples]
-
+        print(f"traj_gen shape is {traj_gen}")
         results = {"xyz": traj_gen, "time": time_gen}
         # EXTERNAL_POTENTIAL ###################################################
         if xyz_traj:

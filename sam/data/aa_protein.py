@@ -255,7 +255,7 @@ class AllAtomProteinDataset(ProteinDataset):
             unsqueeze=True
         )
         fr_of = get_frames_from_po(po_of)
-
+        #print(fr_of.keys())
         self.time_a += time.time()-t0  ###
         self.time_c += 1  ###
 
