@@ -342,21 +342,29 @@ def get_traj_list(
         bool_mask_i = torch.Tensor(bool_mask_i) == 1.0
         # bool_mask_i = mask[i].astype(bool)[...,None]
         xyz_traj_i = xyz_atom14_i[bool_mask_i]
-        xyz_traj_i = xyz_traj_i.detach().clone()
-        xyz_traj_i.requires_grad = True
-    
-        #xyz_traj_i.requires_grad = True
-        if guided:
-        # Use the boolean mask to filter data
-        # We need to expand the dimensions of bool_mask to match data's dimensions for broadcasting
-        #print("xyz_traj_i grad is", xyz_traj_i.grad)
-        #print("xyz_traj_i shape is ",xyz_traj_i.shape)
+
+        if guided:      
             device = "cuda:0" if torch.cuda.is_available() else "cpu"
+            xyz_traj_i = xyz_traj_i.detach().clone()
+            xyz_traj_i.requires_grad = True
             pdb_file = '/dors/wankowicz_lab/castelt/guided_sampling/PDBs/7lfo_clean.pdb'
-            mtz_file = '/dors/wankowicz_lab/castelt/guided_sampling/PDBs/7lfo-sf.cif'
+            mtz_file = '/dors/wankowicz_lab/castelt/guided_sampling/PDBs/7lfo_final.mtz'
             exp_loss, reflection, r_free = exp_nll(xyz_traj_i, pdb_file, mtz_file, device)
-            exp_loss.backward(retain_graph=True)
-            xyz_traj_i = xyz_traj_i - xyz_traj_i.grad * .01
+            print(f"\n exp_loss before optimization is {exp_loss}\n")
+            optimizer = torch.optim.LBFGS([xyz_traj_i], lr=1.0, max_iter=25, line_search_fn='strong_wolfe')
+            def closure():
+                optimizer.zero_grad()
+                exp_loss, reflection, r_free = exp_nll(xyz_traj_i, pdb_file, mtz_file, device)
+                print(f"exp_loss is of optimization is {exp_loss}")
+                exp_loss.backward()
+                return exp_loss
+            steps = 5
+            for step in range(steps):
+                print(f"\n step {step} is beginning\n")
+                optimizer.step(closure)
+                print(f"\n step {step} is done\n")
+                exp_loss, reflection, r_free = exp_nll(xyz_traj_i, pdb_file, mtz_file, device)
+            print(f"\n exp_loss after optimization is {exp_loss}\n")
     
         # Now filtered_data will have shape (x, 3) where x is the number of True in bool_mask
 

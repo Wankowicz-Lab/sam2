@@ -229,14 +229,8 @@ class SAM:
             sample_args=sample_args,
             use_cache=use_cache
         )
-        """
-        TO DO:
-         Here is where we would need to add SFcalculator
-        I am not sure how entirely to do this but it will be on gen_out["enc"]
-        """
-        
-        print("gen_out", gen_out["enc"].shape)
-        print(f"Type of gen_out is {type(gen_out["enc"])}")
+        #print("gen_out", gen_out["enc"].shape)
+        #print(f"Type of gen_out is {type(gen_out["enc"])}")
         # Decode to xyz coordinates.
         dec_out = self.decode(
             enc=gen_out["enc"],
@@ -532,8 +526,8 @@ class AllAtomSAM(SAM):
                 n_gen_i = e_gen_i.shape[0]
                 batch_y[:e_gen_i.shape[0]] = e_gen_i
                 batch_y.requires_grad = True
-                print(f"e_gen_i is {e_gen_i.shape}")
-                print(f"\nbatch_y is {batch_y.shape}\n")
+                #print(f"e_gen_i is {e_gen_i.shape}")
+                #print(f"\nbatch_y is {batch_y.shape}\n")
                 time_gen_i = time.time()
                 
                 # Forward pass
@@ -556,7 +550,7 @@ class AllAtomSAM(SAM):
         traj_gen = []
         for sm_i in xyz_gen:
             # We are looking here
-            traj_i = get_traj_list(sm_i, batch_y = batch_y, guided = False)
+            traj_i = get_traj_list(sm_i, batch_y = batch_y, guided = True)
             traj_gen.extend(traj_i)
         traj_gen = mdtraj.join(traj_gen)
         traj_gen = traj_gen[:n_samples]
