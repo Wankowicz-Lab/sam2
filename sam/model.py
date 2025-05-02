@@ -532,6 +532,7 @@ class AllAtomSAM(SAM):
                 
                 # Forward pass
                 # first pass before guided sampling
+                my_optimizer = torch.optim.Adam([batch_y], lr=1e-2)
                 sm_i = self.decoder.nn_forward(batch_y, batch)
                 
                 time_gen += time.time() - time_gen_i
@@ -550,7 +551,7 @@ class AllAtomSAM(SAM):
         traj_gen = []
         for sm_i in xyz_gen:
             # We are looking here
-            traj_i = get_traj_list(sm_i, batch_y = batch_y, guided = True)
+            traj_i = get_traj_list(sm_i, batch_y = batch_y, guided = False)
             traj_gen.extend(traj_i)
         traj_gen = mdtraj.join(traj_gen)
         traj_gen = traj_gen[:n_samples]
