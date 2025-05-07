@@ -316,7 +316,6 @@ def get_atom14_mask(aa, device=None):
     atom14_atom_exists = atom14_ids[aa]
     return atom14_atom_exists
 
-
 def get_traj_list(
         structure: dict,
         a: torch.Tensor = None,
@@ -331,44 +330,29 @@ def get_traj_list(
     mask = restype_atom14_mask[_a]
 
     traj_l = []
-    current_latent = torch.zeros(structure["positions"].shape)
-    
     for i in range(structure["positions"].shape[0]):
-        
+    
         one_letter_seq_i = [restypes[j] for j in _a[i]]
 
         xyz_atom14_i = structure["positions"][i]
         bool_mask_i = mask[i].astype(bool)
         bool_mask_i = torch.Tensor(bool_mask_i) == 1.0
         # bool_mask_i = mask[i].astype(bool)[...,None]
-        xyz_traj_i = xyz_atom14_i[bool_mask_i]
 
-        if guided:      
+        # Use the boolean mask to filter data
+        # We need to expand the dimensions of bool_mask to match data's dimensions for broadcasting
+        xyz_traj_i = xyz_atom14_i[bool_mask_i]
+        # Now filtered_data will have shape (x, 3) where x is the number of True in bool_mask
+        if guided:     
             device = "cuda:0" if torch.cuda.is_available() else "cpu"
-            xyz_traj_i = xyz_traj_i.detach().clone()
-            xyz_traj_i.requires_grad = True
             pdb_file = '/dors/wankowicz_lab/castelt/guided_sampling/PDBs/7lfo_clean.pdb'
             mtz_file = '/dors/wankowicz_lab/castelt/guided_sampling/PDBs/7lfo_final.mtz'
             exp_loss, reflection, r_free = exp_nll(xyz_traj_i, pdb_file, mtz_file, device)
-            print(f"\n exp_loss before optimization is {exp_loss}\n")
-            optimizer = torch.optim.LBFGS([xyz_traj_i], lr=1.0, max_iter=25, line_search_fn='strong_wolfe')
-            def closure():
-                optimizer.zero_grad()
-                exp_loss, reflection, r_free = exp_nll(xyz_traj_i, pdb_file, mtz_file, device)
-                print(f"exp_loss is of optimization is {exp_loss}")
-                exp_loss.backward()
-                return exp_loss
-            steps = 5
-            for step in range(steps):
-                print(f"\n step {step} is beginning\n")
-                optimizer.step(closure)
-                print(f"\n step {step} is done\n")
-                exp_loss, reflection, r_free = exp_nll(xyz_traj_i, pdb_file, mtz_file, device)
-            print(f"\n exp_loss after optimization is {exp_loss}\n")
-    
-        # Now filtered_data will have shape (x, 3) where x is the number of True in bool_mask
+            exp_loss.backward(retain_graph=True)
+            batch_y_grad = batch_y.grad
 
         topology_i = get_atom14_topology(one_letter_seq_i, verbose=verbose)
+
         traj_i = mdtraj.Trajectory(xyz=xyz_traj_i.detach().cpu().numpy()*0.1,
                                    topology=topology_i)
         if verbose:
@@ -376,10 +360,9 @@ def get_traj_list(
         traj_l.append(traj_i)
 
     if not join:
-        return traj_l
+        return traj_l, batch_y_grad, exp_loss
     else:
         return mdtraj.join(traj_l)
-
 
 per_conf_attrs = [
     "x",

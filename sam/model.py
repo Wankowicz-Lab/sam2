@@ -503,7 +503,9 @@ class AllAtomSAM(SAM):
             n_frames=n_samples,
             verbose=False
         )
-
+        
+        batch_y_grad = None
+        
         # Dataloader for decoding.
         dataloader = torch.utils.data.dataloader.DataLoader(
             dataset=dataset, batch_size=batch_size)
@@ -515,62 +517,52 @@ class AllAtomSAM(SAM):
         xyz_traj = []
         xyz_traj_cls = []
         self._print("- Decoding.")
-        while tot_graphs < n_samples:
-            for batch in dataloader:
-                batch = batch.to(self.device)
-                batch_y = torch.zeros(batch.x.shape[0],
-                                      batch.x.shape[1],
-                                      enc.shape[-1],
-                                      device=self.device)
-                e_gen_i = enc[tot_graphs:tot_graphs+batch.num_graphs]
-                n_gen_i = e_gen_i.shape[0]
-                batch_y[:e_gen_i.shape[0]] = e_gen_i
-                batch_y.requires_grad = True
-                #print(f"e_gen_i is {e_gen_i.shape}")
-                #print(f"\nbatch_y is {batch_y.shape}\n")
-                time_gen_i = time.time()
+        exp_loss = float("inf")
+        current_iter = 0
+        while exp_loss > 10000:
+            while tot_graphs < n_samples:
+                for batch in dataloader:
+                    batch = batch.to(self.device)
+                    batch_y = torch.zeros(batch.x.shape[0],
+                                        batch.x.shape[1],
+                                        enc.shape[-1],
+                                        device=self.device)
+                    e_gen_i = enc[tot_graphs:tot_graphs+batch.num_graphs]
+                    n_gen_i = e_gen_i.shape[0]
+                    batch_y[:e_gen_i.shape[0]] = e_gen_i
+                    batch_y.requires_grad = True
+                    time_gen_i = time.time()
+                    if batch_y_grad is None:
+                        sm_i = self.decoder.nn_forward(batch_y, batch)
+                    else:
+                        batch_y = batch_y - batch_y_grad
+                        sm_i = self.decoder.nn_forward(batch_y, batch)
+                    time_gen += time.time() - time_gen_i
+                    # if pad_gen_batch:foll
+                    #     xyz_gen_i = xyz_gen_i[:n_gen_i]
+                    for k in sm_i.keys():
+                        sm_i[k] = sm_i[k]
+                    sm_i["positions"] = sm_i["positions"][-1]
+                    xyz_gen.append(sm_i)
+                    tot_graphs += n_gen_i
+                    self._print("- Decoded {} graphs of {}.".format(
+                        tot_graphs, n_samples))
+                    if tot_graphs >= n_samples:
+                        break
                 
-                # Forward pass
-                # first pass before guided sampling
-                my_optimizer = torch.optim.Adam([batch_y], lr=1e-2)
-                sm_i = self.decoder.nn_forward(batch_y, batch)
-                
-                time_gen += time.time() - time_gen_i
-                
-                # Store positions for trajectory
-                sm_i["positions"] = sm_i["positions"][-1]
-                xyz_gen.append(sm_i)
-                tot_graphs += n_gen_i
-                self._print("- Decoded {} graphs of {}.".format(
-                    tot_graphs, n_samples))
-                if tot_graphs >= n_samples:
-                    break
-        
-        self._print(f"- Done.")
+            self._print(f"- Done.")
 
-        traj_gen = []
-        for sm_i in xyz_gen:
-            # We are looking here
-            traj_i = get_traj_list(sm_i, batch_y = batch_y, guided = False)
+            traj_gen = []
+
+            traj_i, batch_y_grad, exp_loss = get_traj_list(sm_i, batch_y = batch_y, guided=True)
+            if current_iter % 5 == 0:
+                print(f"exp_loss: {exp_loss.item()} on iter {current_iter}")
             traj_gen.extend(traj_i)
-        traj_gen = mdtraj.join(traj_gen)
-        traj_gen = traj_gen[:n_samples]
-        #print(f"traj_gen shape is {traj_gen}")
-        results = {"xyz": traj_gen, "time": time_gen}
-        # EXTERNAL_POTENTIAL ###################################################
-        if xyz_traj:
-            traj_gen_diffusion = []
-            xyz_traj_cls = np.array(xyz_traj_cls)
-            print(xyz_traj_cls, len(xyz_traj_cls))
-            print(len(xyz_traj))
-            for sm_i in xyz_traj:
-                traj_gen_diffusion.extend(get_traj_list(sm_i))
-            traj_gen_diffusion = mdtraj.join(traj_gen_diffusion)
-            results["xyz_traj"] = []
-            for m in range(tot_graphs):
-                results["xyz_traj"].append(traj_gen_diffusion[xyz_traj_cls == m])
-        ########################################################################
+            traj_gen = mdtraj.join(traj_gen)
+            traj_gen = traj_gen[:n_samples]
 
+            results = {"xyz": traj_gen, "time": time_gen}
+            current_iter += 1
         return results
     
     def _to(self, t, out_type):
