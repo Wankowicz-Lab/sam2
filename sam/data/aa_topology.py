@@ -330,39 +330,50 @@ def get_traj_list(
     mask = restype_atom14_mask[_a]
 
     traj_l = []
-    for i in range(structure["positions"].shape[0]):
+    total_loss = 0.0
     
+    for i in range(structure["positions"].shape[0]):
+        
         one_letter_seq_i = [restypes[j] for j in _a[i]]
 
         xyz_atom14_i = structure["positions"][i]
         bool_mask_i = mask[i].astype(bool)
         bool_mask_i = torch.Tensor(bool_mask_i) == 1.0
-        # bool_mask_i = mask[i].astype(bool)[...,None]
 
         # Use the boolean mask to filter data
-        # We need to expand the dimensions of bool_mask to match data's dimensions for broadcasting
         xyz_traj_i = xyz_atom14_i[bool_mask_i]
-        # Now filtered_data will have shape (x, 3) where x is the number of True in bool_mask
-        if guided:     
-            device = "cuda:0" if torch.cuda.is_available() else "cpu"
-            pdb_file = '/dors/wankowicz_lab/castelt/guided_sampling/PDBs/7lfo_clean.pdb'
-            mtz_file = '/dors/wankowicz_lab/castelt/guided_sampling/PDBs/7lfo_final.mtz'
-            exp_loss, reflection, r_free = exp_nll(xyz_traj_i, pdb_file, mtz_file, device)
-            exp_loss.backward(retain_graph=True)
-            batch_y_grad = batch_y.grad
-
+        if i == 0:
+            xyz_traj_stacked = torch.zeros(xyz_traj_i.shape[0], 3)
+            xyz_traj_stacked = xyz_traj_stacked.to(xyz_traj_i.device)
+        else:
+            xyz_traj_stacked = torch.vstack((xyz_traj_i,xyz_traj_stacked))
+        
         topology_i = get_atom14_topology(one_letter_seq_i, verbose=verbose)
-
-        traj_i = mdtraj.Trajectory(xyz=xyz_traj_i.detach().cpu().numpy()*0.1,
+        # Create trajectory with detached tensor to avoid memory issues
+        traj_i = mdtraj.Trajectory(xyz=xyz_traj_i.cpu().detach().numpy()*0.1,
                                    topology=topology_i)
         if verbose:
             print(traj_i)
         traj_l.append(traj_i)
 
-    if not join:
-        return traj_l, batch_y_grad, exp_loss
+    # Calculate loss
+    if guided:     
+        device = "cuda:0" if torch.cuda.is_available() else "cpu"
+        pdb_file = '/dors/wankowicz_lab/castelt/guided_sampling/PDBs/7lfo_clean.pdb'
+        mtz_file = '/dors/wankowicz_lab/castelt/guided_sampling/PDBs/7lfo_final.mtz'
+        exp_loss, reflection, r_free = exp_nll(xyz_traj_stacked, pdb_file, mtz_file, device)
+        exp_loss.backward()
+    
+    if not join and not guided:
+        return traj_l
+    elif not join and guided:
+        return traj_l, avg_loss
     else:
-        return mdtraj.join(traj_l)
+        joined_traj = mdtraj.join(traj_l)
+        if guided:
+            return joined_traj, avg_loss
+        else:
+            return joined_traj
 
 per_conf_attrs = [
     "x",
