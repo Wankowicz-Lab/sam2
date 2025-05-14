@@ -131,7 +131,6 @@ def exp_nll(pred_coords, pdb_path, mtz_path, device):
     dcp.get_scales_adam()
 
     reflections = torch.tensor(dcp.HKL_array.shape[0], device=device)
-    dcp.atom_pos_orth = pred_coords_torch
     
     nll = NLLloss(dcp)
     loss = nll(pred_coords_torch.reshape(1, -1, 3))

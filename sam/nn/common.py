@@ -41,7 +41,7 @@ def get_num_params(net):
 def get_device(name, load=False):
     if name == "cuda":
         if torch.cuda.is_available():
-            device = torch.device("cuda")
+            device = torch.device("cuda:1")
             map_location_args = {}
         else:
             raise OSError("CUDA is not available for PyTorch.")

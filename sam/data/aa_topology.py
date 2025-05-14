@@ -19,7 +19,7 @@ from sam.openfold.data import data_transforms
 
 from sam.data.sequences import aa_one_to_three_dict, aa_list, aa_three_letters
 from sam.sfcalc import exp_nll
-
+from sam.kabasch import kabsch_torch as kabsch
 
 #
 # mdtraj trajectories.
@@ -322,7 +322,8 @@ def get_traj_list(
         verbose: bool = False,
         join: bool = False,
         batch_y: torch.Tensor = None,
-        guided: bool = False
+        guided: bool = False,
+        optimizer: torch.optim.Optimizer = None
     ):
 
     _a = _get_a(structure, a).cpu()
@@ -332,46 +333,60 @@ def get_traj_list(
     traj_l = []
     total_loss = 0.0
     
-    for i in range(structure["positions"].shape[0]):
-        
-        one_letter_seq_i = [restypes[j] for j in _a[i]]
+    xyz_traj_frames = []
+    ref_pdb_path = "/dors/wankowicz_lab/castelt/guided_sampling/PDBs/7lfo/7lfo_clean.pdb"
+    reference_mdtraj = mdtraj.load(ref_pdb_path)
+    reference_ca_indices = reference_mdtraj.topology.select('name CA')
 
+    for i in range(structure["positions"].shape[0]):
+        one_letter_seq_i = [restypes[j] for j in _a[i]]
+        
         xyz_atom14_i = structure["positions"][i]
         bool_mask_i = mask[i].astype(bool)
         bool_mask_i = torch.Tensor(bool_mask_i) == 1.0
-
-        # Use the boolean mask to filter data
-        xyz_traj_i = xyz_atom14_i[bool_mask_i]
-        if i == 0:
-            xyz_traj_stacked = torch.zeros(xyz_traj_i.shape[0], 3)
-            xyz_traj_stacked = xyz_traj_stacked.to(xyz_traj_i.device)
-        else:
-            xyz_traj_stacked = torch.vstack((xyz_traj_i,xyz_traj_stacked))
+        
+        xyz_traj_i = xyz_atom14_i[bool_mask_i]  # shape: [N_atoms, 3]
+        
         
         topology_i = get_atom14_topology(one_letter_seq_i, verbose=verbose)
-        # Create trajectory with detached tensor to avoid memory issues
-        traj_i = mdtraj.Trajectory(xyz=xyz_traj_i.cpu().detach().numpy()*0.1,
-                                   topology=topology_i)
-        if verbose:
-            print(traj_i)
+        
+        traj_i = mdtraj.Trajectory(xyz=xyz_traj_i.cpu().detach().numpy(),
+                                topology=topology_i)
+        current_ca_indices = traj_i.topology.select('name CA')
+        #traj_i.superpose(reference_mdtraj, frame=0, atom_indices=current_ca_indices, ref_atom_indices=reference_ca_indices)
+        
+       
+        rmsd_before, rmsd_after, rotated = kabsch(xyz_traj_i, torch.tensor(traj_i.xyz[0], device=xyz_traj_i.device))
+                                        
         traj_l.append(traj_i)
+        
+        xyz_traj_frames.append(rotated) 
+    
+    xyz_traj_list = [xyz_traj_i.unsqueeze(2) for rotated in xyz_traj_frames]
+
+    xyz_traj_stacked = torch.cat(xyz_traj_list, dim=2)  # shape: [N_atoms, 3, N_frames]
+    xyz_traj_stacked = xyz_traj_stacked.permute(2, 0, 1)
 
     # Calculate loss
-    if guided:     
-        device = "cuda:0" if torch.cuda.is_available() else "cpu"
-        pdb_file = '/dors/wankowicz_lab/castelt/guided_sampling/PDBs/7lfo_clean.pdb'
-        mtz_file = '/dors/wankowicz_lab/castelt/guided_sampling/PDBs/7lfo_final.mtz'
+
+    if guided:    
+        device = "cuda:1" if torch.cuda.is_available() else "cpu"
+        pdb_file = '/dors/wankowicz_lab/castelt/guided_sampling/PDBs/7lfo/7lfo_clean.pdb'
+        mtz_file = '/dors/wankowicz_lab/castelt/guided_sampling/PDBs/7lfo/7lfo_final.mtz'
+
+        optimizer.zero_grad()
         exp_loss, reflection, r_free = exp_nll(xyz_traj_stacked, pdb_file, mtz_file, device)
         exp_loss.backward()
-    
+        optimizer.step()
+
     if not join and not guided:
         return traj_l
     elif not join and guided:
-        return traj_l, avg_loss
+        return traj_l, exp_loss
     else:
         joined_traj = mdtraj.join(traj_l)
         if guided:
-            return joined_traj, avg_loss
+            return joined_traj, exp_loss
         else:
             return joined_traj
 

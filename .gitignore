@@ -1,4 +1,12 @@
 __pycache__/
 sam/training/
 weights/
-sam2.egg-info
+sam2.egg-info/
+*.pdb/
+*.dcd/
+*.mtz/
+*.log/
+*.png/
+*.pdf/
+*.txt/
+*.csv

@@ -522,50 +522,123 @@ class AllAtomSAM(SAM):
         optimizer = None
         
         # Number of optimization iterations
-        max_iterations = 50
+        max_iterations = 3
         
         # Track losses for plotting
         loss_values = []
+        guided_sampling = False
+        if guided_sampling:
+            while current_iter < max_iterations:
+                tot_graphs = 0
+                xyz_gen = []
+                
+                while tot_graphs < n_samples:
+                    for batch in dataloader:
+                        batch = batch.to(self.device)
+                        
+                        # Initialize batch_y if first iteration
+                        if batch_y is None:
+                            self._print(f"current_iter is {current_iter} so init batch_y")
+                            batch_y = torch.zeros(batch.x.shape[0],
+                                                batch.x.shape[1],
+                                                enc.shape[-1],
+                                                device=self.device)
+                            e_gen_i = enc[tot_graphs:tot_graphs+batch.num_graphs]
+                            n_gen_i = e_gen_i.shape[0]
+                            batch_y[:e_gen_i.shape[0]] = e_gen_i
+                            
+                            # Initialize optimizer with batch_y as parameter
+                            batch_y.requires_grad = True
+                            optimizer = torch.optim.Adam([batch_y], lr=0.01)
+                        else:
+                            self._print(f"current_iter is {current_iter}")
+                            n_gen_i = batch.num_graphs
+                        
+                        time_gen_i = time.time()
+                        
+                        # Forward pass through decoder
+                        sm_i = self.decoder.nn_forward(batch_y, batch)
+                        time_gen += time.time() - time_gen_i
+                        
+                        for k in sm_i.keys():
+                            sm_i[k] = sm_i[k]
+                        sm_i["positions"] = sm_i["positions"][-1]
+                        xyz_gen.append(sm_i)
+                        tot_graphs += n_gen_i
+                        self._print("- Decoded {} graphs of {}.".format(
+                            tot_graphs, n_samples))
+                        if tot_graphs >= n_samples:
+                            break
+                
+                self._print(f"- Done with iteration {current_iter}")
+                self._print(f"Begin guided optimization")
+                traj_gen = []
+                # Apply guided optimization if not the final iteration
+                guided = (current_iter < max_iterations-1)
+                
+                # Get trajectories and compute loss with gradient propagation
+                if guided:
+                    traj_i, loss_value = get_traj_list(sm_i, batch_y=batch_y, guided=True, optimizer=optimizer)
+                
+                    # Track the loss value
+                    loss_values.append(loss_value)
+                    
+                    # Print current loss
+                    self._print(f"- Iteration {current_iter}, Loss: {loss_value.item():.4f}")
+                    
+                    # Optimization step (backpropagation already happened in get_traj_list)
+
+                else:
+                    # On final iteration, just get trajectories without guidance
+                    traj_i = get_traj_list(sm_i, batch_y=batch_y, guided=False)
+                    traj_gen.extend(traj_i)
+                
+                
+                print(f"the sum of batch_y is {torch.sum(batch_y)} on iteration {current_iter}")
+                current_iter += 1
+            # Generate plot of loss values
+            if loss_values:
+                plt.figure(figsize=(10, 6))
+                # Convert loss values to CPU and detach from computation graph before plotting
+                cpu_loss_values = [loss.cpu().detach().item() for loss in loss_values]
+                plt.plot(range(len(cpu_loss_values)), cpu_loss_values, marker='o')
+                plt.title(f'Exponential Loss During Optimization for {prot_name}')
+                plt.xlabel('Iteration')
+                plt.ylabel('Exponential Loss')
+                plt.grid(True)
+                
+                # Save the plot
+                plot_path = os.path.join(os.getcwd(), f'{prot_name}_loss_plot.png')
+                plt.savefig(plot_path)
+                plt.close()
+                self._print(f"- Loss plot saved to: {plot_path}")
+
+            # Use the final trajectories
+            traj_gen = mdtraj.join(traj_gen)
+            traj_gen = traj_gen[:n_samples]
+
+            results = {"xyz": traj_gen, "time": time_gen, "loss_values": loss_values}
         
-        while current_iter < max_iterations and (current_iter < 2 or exp_loss > 10000):
-            self._print(f"Starting iteration {current_iter}")
-            tot_graphs = 0
-            xyz_gen = []
-            
-            # Only clear gradients at the beginning of each iteration
-            if optimizer is not None:
-                optimizer.zero_grad()
-            
+            return results
+        else: 
             while tot_graphs < n_samples:
                 for batch in dataloader:
                     batch = batch.to(self.device)
-                    
-                    # Initialize batch_y if first iteration
-                    if batch_y is None:
-                        batch_y = torch.zeros(batch.x.shape[0],
-                                            batch.x.shape[1],
-                                            enc.shape[-1],
-                                            device=self.device)
-                        e_gen_i = enc[tot_graphs:tot_graphs+batch.num_graphs]
-                        n_gen_i = e_gen_i.shape[0]
-                        batch_y[:e_gen_i.shape[0]] = e_gen_i
-                        
-                        # Ensure batch_y requires gradient
-                        batch_y.requires_grad_(True)
-                        
-                        # Initialize optimizer with batch_y as parameter
-                        optimizer = torch.optim.Adam([batch_y], lr=1)
-                    else:
-                        n_gen_i = batch.num_graphs
-                    
-                    time_gen_i = time.time()
-                    
-                    # Forward pass through decoder
-                    sm_i = self.decoder.nn_forward(batch_y, batch)
-                    time_gen += time.time() - time_gen_i
-                    
+                    batch_y = torch.zeros(batch.x.shape[0],
+                                        batch.x.shape[1],
+                                        enc.shape[-1],
+                                        device=self.device)
+                    e_gen_i = enc[tot_graphs:tot_graphs+batch.num_graphs]
+                    n_gen_i = e_gen_i.shape[0]
+                    batch_y[:e_gen_i.shape[0]] = e_gen_i
+                    with torch.no_grad():
+                        time_gen_i = time.time()
+                        sm_i = self.decoder.nn_forward(batch_y, batch)
+                        time_gen += time.time() - time_gen_i
+                    # if pad_gen_batch:
+                    #     xyz_gen_i = xyz_gen_i[:n_gen_i]
                     for k in sm_i.keys():
-                        sm_i[k] = sm_i[k]
+                        sm_i[k] = sm_i[k].cpu()
                     sm_i["positions"] = sm_i["positions"][-1]
                     xyz_gen.append(sm_i)
                     tot_graphs += n_gen_i
@@ -574,56 +647,18 @@ class AllAtomSAM(SAM):
                     if tot_graphs >= n_samples:
                         break
             
-            self._print(f"- Done with iteration {current_iter}")
+            self._print(f"- Done.")
 
             traj_gen = []
-            # Apply guided optimization if not the final iteration
-            guided = (current_iter < max_iterations-1)
-            
-            # Get trajectories and compute loss with gradient propagation
-            if guided:
-                traj_i, loss_value = get_traj_list(sm_i, batch_y=batch_y, guided=True)
+            for sm_i in xyz_gen:
+                traj_i = get_traj_list(sm_i)
                 traj_gen.extend(traj_i)
-                
-                # Track the loss value
-                exp_loss = loss_value
-                loss_values.append(exp_loss)
-                
-                # Print current loss
-                self._print(f"- Iteration {current_iter}, Loss: {exp_loss:.4f}")
-                
-                # Optimization step (backpropagation already happened in get_traj_list)
-                optimizer.step()
-            else:
-                # On final iteration, just get trajectories without guidance
-                traj_i = get_traj_list(sm_i, batch_y=batch_y, guided=False)
-                traj_gen.extend(traj_i)
+            traj_gen = mdtraj.join(traj_gen)
+            traj_gen = traj_gen[:n_samples]
+            results = {"xyz": traj_gen, "time": time_gen}
             
-            current_iter += 1
-
-        # Generate plot of loss values
-        if loss_values:
-            plt.figure(figsize=(10, 6))
-            plt.plot(range(len(loss_values)), loss_values, marker='o')
-            plt.title(f'Exponential Loss During Optimization for {prot_name}')
-            plt.xlabel('Iteration')
-            plt.ylabel('Exponential Loss')
-            plt.grid(True)
-            
-            # Save the plot
-            plot_path = os.path.join(os.getcwd(), f'{prot_name}_loss_plot.png')
-            plt.savefig(plot_path)
-            plt.close()
-            self._print(f"- Loss plot saved to: {plot_path}")
-
-        # Use the final trajectories
-        traj_gen = mdtraj.join(traj_gen)
-        traj_gen = traj_gen[:n_samples]
-
-        results = {"xyz": traj_gen, "time": time_gen, "loss_values": loss_values}
-     
         return results
-    
+
     def _to(self, t, out_type):
         return t
 
